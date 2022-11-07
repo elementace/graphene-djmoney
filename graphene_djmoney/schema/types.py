@@ -1,18 +1,14 @@
-from django.utils.functional import cached_property
-
 import graphene
 from graphene.types import InputObjectType, ObjectType, Scalar
 from graphql.language import ast
 from graphene_django.converter import convert_django_field
-from moneyed.localization import CurrencyFormatter
+from babel.numbers import get_currency_symbol
 
 from djmoney.models.fields import MoneyField
 from djmoney.money import Money as DJMoney, get_current_locale
 from djmoney.settings import BASE_CURRENCY, DECIMAL_PLACES
 
 __all__ = ("Money", "MoneyInput", "StringMoney")
-
-_cf = CurrencyFormatter()
 
 
 class StringMoney(Scalar):
@@ -96,7 +92,9 @@ class Money(ObjectType):
             numeric=self.currency.numeric,
         )
 
-    format_amount = graphene.Field(graphene.String, decimals=graphene.Int(), required=True)
+    format_amount = graphene.Field(
+        graphene.String, decimals=graphene.Int(), required=True
+    )
 
     def resolve_format_amount(self, info, *, decimals: int, **kwargs):
         return "{0:.{1}f}".format(self.amount, decimals)
@@ -104,7 +102,9 @@ class Money(ObjectType):
 
 class MoneyInput(InputObjectType):
     amount = graphene.String(description="The numerical amount.", required=True)
-    currency = graphene.String(description="The ISO-421 3-letter currency code.", required=True)
+    currency = graphene.String(
+        description="The ISO-421 3-letter currency code.", required=True
+    )
 
     def __str__(self):
         return "{0} {1}".format(self.amount, self.currency)
@@ -122,7 +122,9 @@ def convert_field_to_graphql_money(field, registry=None):
 def get_sign_definition(money_dict):
     if "_sign_definition" not in money_dict:
         try:
-            money_dict["_sign_definition"] = _cf.get_sign_definition(money_dict["code"], get_current_locale())
+            money_dict["_sign_definition"] = get_currency_symbol(
+                money_dict["code"], locale=get_current_locale()
+            )
         except IndexError:
             money_dict["_sign_definition"] = ("", "")
     return money_dict["_sign_definition"]
